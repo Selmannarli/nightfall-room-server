@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: nightfall-rooms
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: MAX_ROOMS
+        value: "16"
+
