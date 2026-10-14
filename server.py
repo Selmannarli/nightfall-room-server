@@ -75,10 +75,9 @@ async def leave(room, member):
             del rooms[room.code]
         peers = list(room.members.values())
         room.members.clear()
-        for peer in peers:
-            if peer is not member:
-                await send(peer.socket, {"type": "error", "message": "Oda sahibi oyundan ayrıldı."})
-                await peer.socket.close(4001, "Host left")
+        guests = [peer for peer in peers if peer is not member]
+        await asyncio.gather(*(send(peer.socket, {"type": "error", "message": "Oda sahibi oyundan ayrıldı."}) for peer in guests))
+        await asyncio.gather(*(peer.socket.close(4001, "Host left") for peer in guests))
     else:
         del room.members[member.peer_id]
         host = room.members.get(1)
@@ -156,7 +155,8 @@ async def relay(socket):
                 break
             target, channel, mode = struct.unpack("<iII", message[:12])
             if channel > 255 or mode > 2 or member.peer_id != 1 and target != 1:
-                await socket.close(1008, "Invalid target or channel")
+                await leave(room, member)
+                await reject(socket, "Invalid target or channel")
                 break
             packet = struct.pack("<III", member.peer_id, channel, mode) + message[12:]
             for recipient in list(room.members.values()):
